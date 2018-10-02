@@ -2,7 +2,7 @@ package com.magenta.sc.paysafe;
 import org.testng.annotations.*;
 
 /**
- * Unit test for simple App.
+ * Unit test for PaysafeIntegration micro service class.
  */
 
 public class PaysafeIntegrationTests {
@@ -21,5 +21,4 @@ public class PaysafeIntegrationTests {
     public void aSlowTest() {
         System.out.println("Slow test");
     }
-
 }
