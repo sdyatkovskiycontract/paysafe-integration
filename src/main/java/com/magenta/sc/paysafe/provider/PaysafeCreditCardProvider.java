@@ -4,12 +4,17 @@ import com.magenta.sc.core.entity.booking.CreditCardTransaction;
 import com.magenta.sc.core.entity.customer.CreditCard;
 import com.magenta.sc.credit_cards.CreditCardProvider;
 import com.magenta.sc.exception.CreditCardException;
+import com.paysafe.Environment;
 import com.paysafe.PaysafeApiClient;
+import com.paysafe.cardpayments.Authorization;
+import com.paysafe.common.Error;
+import com.paysafe.common.PaysafeException;
 import javafx.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.persistence.EntityManager;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 
@@ -36,7 +41,75 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
     }
 
     @Override
-    public CreditCardTransaction settleTransaction(CreditCard card, String txRefGUID, Double amount, String invoiceNumber, EntityManager em) throws CreditCardException {
+    public CreditCardTransaction settleTransaction(
+            CreditCard card,
+            String txRefGUID,
+            Double amount,
+            String invoiceNumber,
+            EntityManager em) throws CreditCardException {
+
+        boolean isSuccess = false;
+
+        // TODO: get billing info
+        String merchantRefNum = txRefGUID;
+        String street = "some street";
+        String city = "Super City";
+        String state = "Some State";
+        String country = "Country";
+        String zip = "000000";
+
+        // Few words about why "amount" should be integer.
+        // From Paysafe developer site:
+        // https://developer.paysafe.com/en/sdks/server-side/java/getting-started/
+        //
+        // Transactions are actually measured in fractions
+        // of the currency specified in the currencyCode;
+        // for example, USD transactions are measured in cents.
+        // This multiplier is how many of these smaller units
+        // make up one of the specified currency. For
+        // example, with the currencyCode USD the value
+        // is 100 but for Japanese YEN the multiplier would
+        // be 1 as there is no smaller unit.
+
+        Integer amountInt = (int) (amount * 100);
+
+        try {
+            // Build our order object.
+            Authorization auth
+                    = Authorization.builder()
+                    .merchantRefNum(merchantRefNum)
+                    .amount(amountInt)
+                    .settleWithAuth(true)
+                    .billingDetails()
+                    .street(street)
+                    .city(city)
+                    .state(state)
+                    .country(country)
+                    .zip(zip)
+                    .done()
+                    .card()
+                    .cardNum(card.getNumber())
+                    .cvv(card.getSecureCode())
+                    .cardExpiry()
+                    .month(card.getExpireDate().getMonthOfYear())
+                    .year(card.getExpireDate().getYearOfCentury())
+                    .done()
+                    .done()
+                    .build();
+
+            Authorization authResponse = client.cardPaymentService().authorize(auth);
+
+            isSuccess = true;
+
+        } catch (PaysafeException ev) {
+            throw new CreditCardException(
+                    CreditCardException.INVALID_CARD_INFO,
+                    "Failed to settle transaction");
+        } catch (IOException e) {
+            throw new CreditCardException(
+                    CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE,
+                    "Failed to settle transaction");        }
+
         return null;
     }
 
