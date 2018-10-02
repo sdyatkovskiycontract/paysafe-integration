@@ -20,21 +20,27 @@ public class PaysafeCreditCardProviderTest {
     private CreditCard expiredCard;
     private CreditCard invalidCard;
 
-    private PaysafeCreditCardProvider createProvider() {
-        return new PaysafeCreditCardProvider();
+    private PaysafeCreditCardProvider provider;
+
+    private PaysafeCreditCardProvider createProvider()
+            throws PaysafeCreditCardProviderException {
+        return PaysafeCreditCardProviderFactory.getInstance().create("config.properties");
     }
 
-    @BeforeMethod
-    public void setUp() {
 
-        cardWithFunds = CreditCardFactory.fromCSV(
+    @BeforeMethod
+    public void setUp() throws PaysafeCreditCardProviderException {
+
+        this.cardWithFunds = CreditCardFactory.fromCSV(
                 "Bob Money; 4444333322221111; 123; 0; Not Expired");
-        cardWithoutFunds = CreditCardFactory.fromCSV(
+        this.cardWithoutFunds = CreditCardFactory.fromCSV(
                 "Bob Poor; 4444333322221111; 123; 0; Not Expired");
-        expiredCard = CreditCardFactory.fromCSV(
+        this.expiredCard = CreditCardFactory.fromCSV(
                 "Bob Expired; 4444333322221111; 123; 0; Not Expired");
-        invalidCard = CreditCardFactory.fromCSV(
+        this.invalidCard = CreditCardFactory.fromCSV(
                 "Bob Fake; 4444333322221111; 123; 0; Not Expired");
+
+        this.provider = createProvider();
     }
 
     @AfterMethod
@@ -44,7 +50,7 @@ public class PaysafeCreditCardProviderTest {
 
     private void testCardValid(CreditCardProvider provider, CreditCard card, boolean expected, String message) {
         try {
-            Boolean validValue = provider.isValidCard(cardWithFunds, cardWithFunds.getCompanyId(), null);
+            Boolean validValue = this.provider.isValidCard(cardWithFunds, cardWithFunds.getCompanyId(), null);
             Assert.assertTrue(validValue, message);
         } catch (CreditCardException e) {
             Assert.fail(message, e);
@@ -54,12 +60,10 @@ public class PaysafeCreditCardProviderTest {
     @Test
     public void testIsValidCard() {
 
-        CreditCardProvider provider = createProvider();
-
-        testCardValid(provider, cardWithFunds, true, "Card with funds test");
-        testCardValid(provider, cardWithoutFunds, true, "Card without funds test");
-        testCardValid(provider, expiredCard, false, "Expired card test");
-        testCardValid(provider, invalidCard, false, "Invalid card test");
+        testCardValid(this.provider, this.cardWithFunds, true, "Card with funds test");
+        testCardValid(this.provider, this.cardWithoutFunds, true, "Card without funds test");
+        testCardValid(this.provider, this.expiredCard, false, "Expired card test");
+        testCardValid(this.provider, this.invalidCard, false, "Invalid card test");
     }
 
     @Test
@@ -68,11 +72,10 @@ public class PaysafeCreditCardProviderTest {
 
     @Test
     public void testSettleTransaction() {
-        CreditCardProvider provider = createProvider();
-
         try {
             CreditCardTransaction transaction =
-                    provider.settleTransaction(cardWithFunds,
+                    this.provider.settleTransaction(
+                            this.cardWithFunds,
                             "some-GUID",
                             1.00,
                             "invoice",
