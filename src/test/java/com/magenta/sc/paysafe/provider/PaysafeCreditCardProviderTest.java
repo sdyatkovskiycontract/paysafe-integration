@@ -1,5 +1,6 @@
 package com.magenta.sc.paysafe.provider;
 
+import com.magenta.sc.core.entity.booking.CreditCardTransaction;
 import com.magenta.sc.core.entity.customer.CreditCard;
 import com.magenta.sc.credit_cards.CreditCardProvider;
 import com.magenta.sc.exception.CreditCardException;
@@ -67,6 +68,20 @@ public class PaysafeCreditCardProviderTest {
 
     @Test
     public void testSettleTransaction() {
+        CreditCardProvider provider = createProvider();
+
+        try {
+            CreditCardTransaction transaction =
+                    provider.settleTransaction(cardWithFunds,
+                            "some-GUID",
+                            1.00,
+                            "invoice",
+                            null);
+
+            Assert.assertNotNull(transaction);
+        } catch (CreditCardException e) {
+            Assert.fail("Failed", e);
+        }
     }
 
     @Test
