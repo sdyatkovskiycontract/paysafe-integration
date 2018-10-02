@@ -1,4 +1,4 @@
-package com.magenta.paysafe;
+package com.magenta.sc.paysafe;
 
 /**
  * Hello world!
