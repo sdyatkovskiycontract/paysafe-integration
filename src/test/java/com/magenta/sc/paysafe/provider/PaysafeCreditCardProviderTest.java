@@ -8,7 +8,6 @@ import com.magenta.sc.paysafe.mock.MockCardInfo;
 import com.magenta.sc.paysafe.mock.MockEntityManagerInfo;
 import com.magenta.sc.paysafe.mock.core.entity.customer.CreditCardFactory;
 import javafx.util.Pair;
-import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -16,14 +15,11 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import javax.persistence.EntityManager;
-
 import java.util.Collection;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for PaysafeCreditCardProvider implementation.
@@ -81,6 +77,8 @@ public class PaysafeCreditCardProviderTest {
 
     @Test
     public void testRegisterCreditCard() {
+
+        // TODO: Check case when cvv and zip code check is required.
 
         CreditCard testingCard = this.cardWithFunds;
 
