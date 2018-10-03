@@ -5,19 +5,22 @@ import com.magenta.sc.core.entity.customer.CreditCard;
 import com.magenta.sc.credit_cards.CreditCardProvider;
 import com.magenta.sc.exception.CreditCardException;
 import com.magenta.sc.paysafe.client.config.PaysafeClientConfig;
-import com.magenta.sc.paysafe.error.CreditCardExceptionFactory;
+import com.magenta.sc.paysafe.error.PaysafeExceptionParser;
 import com.magenta.sc.paysafe.helpers.HolderNameInfo;
 import com.magenta.sc.paysafe.helpers.MerchantRefNumber;
-import com.magenta.sc.paysafe.error.PaysafeExceptionParser;
 import com.paysafe.PaysafeApiClient;
 import com.paysafe.cardpayments.Authorization;
 import com.paysafe.cardpayments.Status;
 import com.paysafe.cardpayments.Verification;
+import com.paysafe.common.Id;
+import com.paysafe.common.Locale;
 import com.paysafe.common.PaysafeException;
+import com.paysafe.customervault.Profile;
 import javafx.util.Pair;
 
 import javax.persistence.EntityManager;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -74,17 +77,80 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
         } catch (PaysafeException ev) {
             if (!PaysafeExceptionParser.isValidationError(ev))
-                throw CreditCardExceptionFactory.whenFailedToValidateCard(ev);
+                throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
         } catch (IOException e) {
-            throw CreditCardExceptionFactory.fromIOException(e);
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
         }
 
         return isSuccess;
     }
 
     @Override
-    public Pair<CreditCard, Collection<CreditCardTransaction>> registerCreditCard(CreditCard card, Long companyId, EntityManager em, boolean checkCvvAndPostcode, boolean checkPostcode) throws CreditCardException {
-        return null;
+    public Pair<CreditCard, Collection<CreditCardTransaction>> registerCreditCard(
+            CreditCard card,
+            Long companyId,
+            EntityManager em,
+            boolean checkCvvAndPostcode,
+            boolean checkPostcode) throws CreditCardException {
+
+        // TODO: validate card, if checkCvvAndPostcode or checkPostcode are set.
+
+        boolean isSuccess = false;
+        String paymentToken = null;
+
+        try {
+
+            HolderNameInfo holder = HolderNameInfo.fromString(card.getHolderName());
+
+            Profile profile = Profile.builder()
+                .merchantCustomerId(java.util.UUID.randomUUID().toString())
+                .locale(Locale.EN_US) // TODO: get rid of this field
+                .firstName(holder.getFirstName())
+                .lastName(holder.getLastName())
+                .email("john.smith@somedomain.com")  // TODO: get rid of this field
+                .phone("713-444-5555") // TODO: get rid of this field
+                .build();
+
+            Profile  profileRes = client.customerVaultService().create(profile);
+
+            if (profileRes.getStatus() != com.paysafe.customervault.Status.ACTIVE) {
+                // TODO: Add message, duplicate it into log.
+                throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+            }
+
+            com.paysafe.customervault.Card createCardRequest =
+                com.paysafe.customervault.Card.builder()
+                    .profileId(profileRes.getId())
+                    .cardNum(card.getNumber())
+                    .cardExpiry()
+                        .month(card.getExpireDate().getMonthOfYear())
+                        .year(card.getExpireDate().getYearOfEra())
+                    .done()
+                .build();
+
+            com.paysafe.customervault.Card createCardResponse = client.customerVaultService().create(createCardRequest);
+
+            isSuccess = createCardResponse.getStatus() == com.paysafe.customervault.Status.ACTIVE;
+
+        } catch (PaysafeException ev) {
+            // TODO: Add message, duplicate it into log.
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        } catch (IOException e) {
+            // TODO: Add message, duplicate it into log.
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        }
+
+        if (!isSuccess)
+            // TODO: Add message, duplicate it into log.
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+
+        card.setCompanyId(companyId);
+
+        em.merge(card);
+
+        // TODO: save payment token in database
+
+        return new Pair<>(card, new ArrayList<>());
     }
 
     @Override
@@ -172,7 +238,36 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
     @Override
     public boolean deleteToken(CreditCard card, EntityManager em) throws CreditCardException {
-        return false;
+
+        boolean isSuccess = false;
+        String paymentToken = null;
+
+        try {
+
+            // TODO: get profileId by card Id
+            String profileIdStr = null;
+            Id<Profile> profileId =  Id.create(profileIdStr, Profile.class);
+
+            // We assume, that each profile linked with only one card.
+            // So, once we decide to delete token,
+            // we just need to delete related profile.
+
+            Profile profile = Profile.builder()
+                    .id(profileId)
+                    .build();
+
+            isSuccess = client.customerVaultService().delete(profile);
+
+        } catch (PaysafeException ev) {
+            if (!PaysafeExceptionParser.isValidationError(ev))
+                throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        } catch (IOException e) {
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        }
+
+        // TODO: update database
+
+        return isSuccess;
     }
 
     @Override
