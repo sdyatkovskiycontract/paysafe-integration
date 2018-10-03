@@ -82,7 +82,7 @@ public class CreditCardFactory {
         if (csvParts.length != 5)
             throw new IllegalArgumentException("CSV string has wrong format");
 
-        if (csvParts[CSV_EXPIRED_FLAG_IDX].equals(CSV_EXPIRED_VALUE))
+        if (csvParts[CSV_EXPIRED_FLAG_IDX].trim().equals(CSV_EXPIRED_VALUE))
             return getExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
                                   csvParts[CSV_NUMBER_IDX].trim(),
                                   csvParts[CSV_COMPANY_ID_IDX].trim(),

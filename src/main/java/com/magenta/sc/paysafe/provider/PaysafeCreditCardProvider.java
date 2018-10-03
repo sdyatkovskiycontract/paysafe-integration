@@ -4,14 +4,17 @@ import com.magenta.sc.core.entity.booking.CreditCardTransaction;
 import com.magenta.sc.core.entity.customer.CreditCard;
 import com.magenta.sc.credit_cards.CreditCardProvider;
 import com.magenta.sc.exception.CreditCardException;
-import com.paysafe.Environment;
+import com.magenta.sc.paysafe.client.config.PaysafeClientConfig;
+import com.magenta.sc.paysafe.error.CreditCardExceptionFactory;
+import com.magenta.sc.paysafe.helpers.HolderNameInfo;
+import com.magenta.sc.paysafe.helpers.MerchantRefNumber;
+import com.magenta.sc.paysafe.error.PaysafeExceptionParser;
 import com.paysafe.PaysafeApiClient;
 import com.paysafe.cardpayments.Authorization;
-import com.paysafe.common.Error;
+import com.paysafe.cardpayments.Status;
+import com.paysafe.cardpayments.Verification;
 import com.paysafe.common.PaysafeException;
 import javafx.util.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.persistence.EntityManager;
 import java.io.IOException;
@@ -20,19 +23,63 @@ import java.util.List;
 
 public class PaysafeCreditCardProvider implements CreditCardProvider {
 
-    private static final String CONFIG_FILENAME = "config.properties";
-
-    private final Logger log = LoggerFactory.getLogger(PaysafeCreditCardProvider.class);
-
     private PaysafeApiClient client;
+    private PaysafeClientConfig clientConfig;
 
-    public PaysafeCreditCardProvider(PaysafeApiClient client) {
+    public PaysafeCreditCardProvider(PaysafeApiClient client,
+                                     PaysafeClientConfig clientConfig) {
         this.client = client;
+        this.clientConfig = clientConfig;
     }
 
     @Override
     public boolean isValidCard(CreditCard card, Long companyId, EntityManager em) throws CreditCardException {
-        return false;
+
+        boolean isSuccess = false;
+
+        String merchantRefNum = MerchantRefNumber.generate();
+
+        try {
+
+            String holderName = card.getHolderName();
+
+            HolderNameInfo holder = HolderNameInfo.fromString(holderName);
+
+            Verification verification = Verification.builder()
+                .merchantRefNum(merchantRefNum)
+                .card()
+                    .cardNum(card.getNumber())
+                    .cardExpiry()
+                        .month(card.getExpireDate().getMonthOfYear())
+                        .year(card.getExpireDate().getYearOfEra())
+                    .done()
+                .done()
+                .profile()
+                    .firstName(holder.getFirstName())
+                    .lastName(holder.getLastName())
+                    //.email("Joe.Smith@canada.com")
+                .done()
+                .billingDetails()
+                    .zip("000000")
+                .done()
+            .build();
+
+            /**
+             * Paysafe verification API call.
+             * @see https://developer.paysafe.com/en/cards/api/#/introduction/complex-json-objects/verifications
+             */
+            Verification verificationResponse = client.cardPaymentService().verify(verification);
+
+            isSuccess = verificationResponse.getStatus() == Status.COMPLETED;
+
+        } catch (PaysafeException ev) {
+            if (!PaysafeExceptionParser.isValidationError(ev))
+                throw CreditCardExceptionFactory.whenFailedToValidateCard(ev);
+        } catch (IOException e) {
+            throw CreditCardExceptionFactory.fromIOException(e);
+        }
+
+        return isSuccess;
     }
 
     @Override
@@ -71,7 +118,7 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
         // is 100 but for Japanese YEN the multiplier would
         // be 1 as there is no smaller unit.
 
-        Integer amountInt = (int) (amount * 100);
+        Integer amountInt = (int) (amount * clientConfig.getCurrencyMultiplier());
 
         try {
             // Build our order object.

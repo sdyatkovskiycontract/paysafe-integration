@@ -32,7 +32,7 @@ public class PaysafeCreditCardProviderFactory {
 
         PaysafeApiClient client = PaysafeApiClientFactory.getInstance().createClient(config);
 
-        return new PaysafeCreditCardProvider(client);
+        return new PaysafeCreditCardProvider(client, config);
     }
 
     public static synchronized PaysafeCreditCardProviderFactory getInstance() {
