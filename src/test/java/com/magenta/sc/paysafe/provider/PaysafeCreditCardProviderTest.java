@@ -30,6 +30,7 @@ public class PaysafeCreditCardProviderTest {
     private CreditCard cardWithoutFunds;
     private CreditCard expiredCard;
     private CreditCard invalidCard;
+    private CreditCard cardWithFundsWithoutPostcode;
 
     private CreditCardProvider provider;
 
@@ -43,13 +44,16 @@ public class PaysafeCreditCardProviderTest {
     public void setUp() throws PaysafeCreditCardProviderException {
 
         this.cardWithFunds = CreditCardFactory.fromCSV(
-                "Bob Money;   4444333322221111; 123; 0; Not Expired");
+                "Bob Money;   4444333322221111; 123; 0; Not Expired; 000000");
         this.cardWithoutFunds = CreditCardFactory.fromCSV(
-                "Bob Poor;    4444333322221111; 123; 0; Not Expired");
+                "Bob Poor;    4444333322221111; 123; 0; Not Expired; 000000");
         this.expiredCard = CreditCardFactory.fromCSV(
-                "Bob Expired; 4444333322221111; 123; 0; Expired");
+                "Bob Expired; 4444333322221111; 123; 0; Expired; 000000");
         this.invalidCard = CreditCardFactory.fromCSV(
-                "Bob Badchecksum;    4444333322221112; 123; 0; Not Expired");
+                "Bob Badchecksum;    4444333322221112; 123; 0; Not Expired; 000000");
+
+        this.cardWithFundsWithoutPostcode = CreditCardFactory.fromCSV(
+                "Bob Money;   4444333322221111; 123; 0; Not Expired; ");
 
         this.provider = createProvider();
     }
@@ -73,6 +77,7 @@ public class PaysafeCreditCardProviderTest {
         testCardValid(this.provider, this.cardWithoutFunds, true, "Card without funds test");
         testCardValid(this.provider, this.expiredCard, false, "Expired card test");
         testCardValid(this.provider, this.invalidCard, false, "Invalid card test");
+        testCardValid(this.provider, this.cardWithFundsWithoutPostcode, true, "Card without postcode test");
     }
 
     @Test
