@@ -17,6 +17,8 @@ import com.paysafe.common.Locale;
 import com.paysafe.common.PaysafeException;
 import com.paysafe.customervault.Profile;
 import javafx.util.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.persistence.EntityManager;
 import java.io.IOException;
@@ -25,6 +27,8 @@ import java.util.Collection;
 import java.util.List;
 
 public class PaysafeCreditCardProvider implements CreditCardProvider {
+
+    private static final Logger logger = LoggerFactory.getLogger(PaysafeCreditCardProvider.class);
 
     private PaysafeApiClient client;
     private PaysafeClientConfig clientConfig;
@@ -65,7 +69,7 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
                     //.email("Joe.Smith@canada.com")
                 .done()
                 .billingDetails()
-                    .zip("000000")
+                    .zip(card.getPostcode())
                 .done()
             .build();
 
@@ -78,8 +82,9 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
             isSuccess = verificationResponse.getStatus() == Status.COMPLETED;
 
         } catch (PaysafeException ev) {
-            if (!PaysafeExceptionParser.isValidationError(ev))
+            if (!PaysafeExceptionParser.isValidationError(ev)) {
                 throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+            }
         } catch (IOException e) {
             throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
         }

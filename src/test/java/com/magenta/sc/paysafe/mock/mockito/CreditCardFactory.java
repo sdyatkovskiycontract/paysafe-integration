@@ -7,11 +7,8 @@ import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 import org.mockito.stubbing.Answer;
 
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import java.util.Calendar;
+import java.util.Date;
 
 public class CreditCardFactory {
 
@@ -21,6 +18,7 @@ public class CreditCardFactory {
     public static final int CSV_SECURE_CODE_IDX = 2;
     public static final int CSV_COMPANY_ID_IDX = 3;
     public static final int CSV_EXPIRED_FLAG_IDX = 4;
+    public static final int CSV_POSTCODE = 5;
 
     public static final String CSV_EXPIRED_VALUE = "Expired";
     public static final String CSV_NOT_EXPIRED_VALUE = "Not expired";
@@ -48,6 +46,7 @@ public class CreditCardFactory {
                                      String companyId,
                                      Integer expiryMonth,
                                      Integer expiryYear,
+                                     String postcode,
                                      MockCardData data) {
         CreditCard card = mock(CreditCard.class);
 
@@ -61,6 +60,7 @@ public class CreditCardFactory {
 
         Long companyIdLong = Long.parseLong(companyId);
         when(card.getCompanyId()).thenReturn(companyIdLong);
+        when(card.getPostcode()).thenReturn(postcode);
 
         setupData(card, data);
 
@@ -72,6 +72,7 @@ public class CreditCardFactory {
                                                String number,
                                                String secureCode,
                                                String companyId,
+                                               String postcode,
                                                MockCardData data) {
         DateTime expire = LocalDateTime.now().plusMonths(1).toDateTime();
 
@@ -81,6 +82,7 @@ public class CreditCardFactory {
                 companyId,
                 expire.getMonthOfYear(),
                 expire.getYear(),
+                postcode,
                 data);
     }
 
@@ -89,6 +91,7 @@ public class CreditCardFactory {
                                             String number,
                                             String secureCode,
                                             String companyId,
+                                            String postcode,
                                             MockCardData data) {
         DateTime expire = LocalDateTime.now().minusMonths(1).toDateTime();
 
@@ -98,6 +101,7 @@ public class CreditCardFactory {
                 companyId,
                 expire.getMonthOfYear(),
                 expire.getYear(),
+                postcode,
                 data);
     }
 
@@ -106,42 +110,23 @@ public class CreditCardFactory {
 
         String[] csvParts = csv.split(CSV_SEPARATOR);
 
-        if (csvParts.length != 5)
+        if (csvParts.length != 6)
             throw new IllegalArgumentException("CSV string has wrong format");
 
-        if (csvParts[CSV_EXPIRED_FLAG_IDX].trim().equals(CSV_EXPIRED_VALUE))
+        if (csvParts[CSV_EXPIRED_FLAG_IDX].trim().equals(CSV_EXPIRED_VALUE)) {
             return getExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
-                                  csvParts[CSV_NUMBER_IDX].trim(),
-                                  csvParts[CSV_COMPANY_ID_IDX].trim(),
-                                  csvParts[CSV_SECURE_CODE_IDX].trim(),
-                                  null);
+                    csvParts[CSV_NUMBER_IDX].trim(),
+                    csvParts[CSV_COMPANY_ID_IDX].trim(),
+                    csvParts[CSV_SECURE_CODE_IDX].trim(),
+                    csvParts[CSV_POSTCODE].trim(),
+                null);
+        }
 
         return getNonExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
                                  csvParts[CSV_NUMBER_IDX].trim(),
                                  csvParts[CSV_COMPANY_ID_IDX].trim(),
                                  csvParts[CSV_SECURE_CODE_IDX].trim(),
-                                 null);
-    }
-
-    @NotNull
-    public static CreditCard fromCSV(String csv, MockCardData data) throws IllegalArgumentException {
-
-        String[] csvParts = csv.split(CSV_SEPARATOR);
-
-        if (csvParts.length != 5)
-            throw new IllegalArgumentException("CSV string has wrong format");
-
-        if (csvParts[CSV_EXPIRED_FLAG_IDX].trim().equals(CSV_EXPIRED_VALUE))
-            return getExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
-                    csvParts[CSV_NUMBER_IDX].trim(),
-                    csvParts[CSV_COMPANY_ID_IDX].trim(),
-                    csvParts[CSV_SECURE_CODE_IDX].trim(),
-                    data);
-
-        return getNonExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
-                csvParts[CSV_NUMBER_IDX].trim(),
-                csvParts[CSV_COMPANY_ID_IDX].trim(),
-                csvParts[CSV_SECURE_CODE_IDX].trim(),
-                data);
+                                 csvParts[CSV_POSTCODE].trim(),
+                            null);
     }
 }
