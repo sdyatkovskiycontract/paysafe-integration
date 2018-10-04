@@ -8,10 +8,10 @@ import com.magenta.sc.paysafe.client.config.PaysafeClientConfig;
 import com.magenta.sc.paysafe.error.PaysafeExceptionParser;
 import com.magenta.sc.paysafe.helpers.HolderNameInfo;
 import com.magenta.sc.paysafe.helpers.MerchantRefNumber;
+import com.magenta.sc.paysafe.provider.verification.CardVerificationParameters;
+import com.magenta.sc.paysafe.provider.verification.CardValidationRequestBuilder;
 import com.paysafe.PaysafeApiClient;
-import com.paysafe.cardpayments.Authorization;
-import com.paysafe.cardpayments.Status;
-import com.paysafe.cardpayments.Verification;
+import com.paysafe.cardpayments.*;
 import com.paysafe.common.Id;
 import com.paysafe.common.Locale;
 import com.paysafe.common.PaysafeException;
@@ -41,37 +41,23 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
         this.clientConfig = clientConfig;
     }
 
-    @Override
-    public boolean isValidCard(CreditCard card, Long companyId, EntityManager em) throws CreditCardException {
-
+    private boolean isValidCard(CreditCard card, Long companyId, EntityManager em, boolean checkCvv, boolean checkPostcode) throws CreditCardException {
         boolean isSuccess = false;
+
+        logger.info("Card x%s: card verification requested.", card.getLast4Digits());
 
         String merchantRefNum = MerchantRefNumber.generate();
 
+        CardVerificationParameters parameters = new CardVerificationParameters(
+                card,
+                merchantRefNum,
+                checkCvv,
+                checkPostcode
+        );
+
         try {
 
-            String holderName = card.getHolderName();
-
-            HolderNameInfo holder = HolderNameInfo.fromString(holderName);
-
-            Verification verification = Verification.builder()
-                .merchantRefNum(merchantRefNum)
-                .card()
-                    .cardNum(card.getNumber())
-                    .cardExpiry()
-                        .month(card.getExpireDate().getMonthOfYear())
-                        .year(card.getExpireDate().getYearOfEra())
-                    .done()
-                .done()
-                .profile()
-                    .firstName(holder.getFirstName())
-                    .lastName(holder.getLastName())
-                    //.email("Joe.Smith@canada.com")
-                .done()
-                .billingDetails()
-                    .zip(card.getPostcode())
-                .done()
-            .build();
+            Verification verification = CardValidationRequestBuilder.build(parameters);
 
             /**
              * Paysafe verification API call.
@@ -81,18 +67,45 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
             isSuccess = verificationResponse.getStatus() == Status.COMPLETED;
 
+            if (checkCvv &&
+                verificationResponse.getCvvVerification() != CvvVerification.MATCH) {
+                logger.error("Card x%s: Cvv verification failed.", card.getLast4Digits());
+                isSuccess = false;
+            }
+
+            if (checkCvv && checkPostcode &&
+                verificationResponse.getAvsResponse() != AvsResponse.MATCH &&
+                verificationResponse.getAvsResponse() != AvsResponse.MATCH_ZIP_ONLY) {
+                logger.error("Card x%s: Postcode verification failed.", card.getLast4Digits());
+                isSuccess = false;
+            }
+
         } catch (PaysafeException ev) {
             if (!PaysafeExceptionParser.isValidationError(ev)) {
-                if (ev.getCode().equals("3004")) // The zip/postal code must be provided for an AVS check request.
+                if (ev.getCode().equals("3004")) {// The zip/postal code must be provided for an AVS check request.
+                    logger.error("Card x%s: Neither card nor default post was provider for paysafe gateway", card.getLast4Digits());
                     throw new CreditCardException(CreditCardException.EMPTY_POSTCODE);
+                }
                 throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
             }
             isSuccess = false;
         } catch (IOException e) {
+            logger.error("Card x%s: Verification failed due to IO error.", card.getLast4Digits());
             throw new CreditCardException(CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE);
         }
 
         return isSuccess;
+    }
+
+    @Override
+    public boolean isValidCard(CreditCard card, Long companyId, EntityManager em) throws CreditCardException {
+        boolean res = isValidCard(card, companyId, em, false, false);
+        if (res) {
+            logger.info("Card x%s: card company Id updated.", card.getLast4Digits());
+            card.setCompanyId(companyId);
+            em.merge(card);
+        }
+        return res;
     }
 
     @Override
@@ -103,10 +116,16 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
             boolean checkCvvAndPostcode,
             boolean checkPostcode) throws CreditCardException {
 
-        // TODO: validate card, if checkCvvAndPostcode or checkPostcode are set.
+        if (checkCvvAndPostcode) {
+            if (!isValidCard(card, companyId, em, true, checkPostcode)) {
+                logger.error("Can't register card %s, card validation failed.",
+                             card.getLast4Digits());
+                throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+            }
+        }
 
         boolean isSuccess = false;
-        String token = null;
+        String token;
 
         try {
 
@@ -114,7 +133,7 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
             Profile profile = Profile.builder()
                 .merchantCustomerId(java.util.UUID.randomUUID().toString())
-                .locale(Locale.EN_US) // TODO: get rid of this field
+                .locale(Locale.EN_US)
                 .firstName(holder.getFirstName())
                 .lastName(holder.getLastName())
                 .build();

@@ -6,9 +6,9 @@ import com.magenta.sc.paysafe.helpers.HolderNameInfo;
 import com.paysafe.cardpayments.Card;
 import com.paysafe.cardpayments.Verification;
 
-public class ValidationRequestBuilder {
+public class CardValidationRequestBuilder {
 
-    public static Verification build(CardValidationParameters parameters) throws CreditCardException {
+    public static Verification build(CardVerificationParameters parameters) throws CreditCardException {
 
         CreditCard card = parameters.getCard();
         String merchantRefNum = parameters.getMerchantRefNum();

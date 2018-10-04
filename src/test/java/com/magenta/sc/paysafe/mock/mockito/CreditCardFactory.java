@@ -65,7 +65,8 @@ public class CreditCardFactory {
         when(card.getCompanyId()).thenReturn(companyIdLong);
         when(card.getPostcode()).thenReturn(postcode);
 
-        setupData(card, data);
+        if (data != null)
+            setupData(card, data);
 
         return card;
     }
@@ -144,16 +145,16 @@ public class CreditCardFactory {
         if (csvParts[CSV_EXPIRED_FLAG_IDX].trim().equals(CSV_EXPIRED_VALUE)) {
             return getExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
                     csvParts[CSV_NUMBER_IDX].trim(),
-                    csvParts[CSV_COMPANY_ID_IDX].trim(),
                     csvParts[CSV_SECURE_CODE_IDX].trim(),
+                    csvParts[CSV_COMPANY_ID_IDX].trim(),
                     csvParts[CSV_POSTCODE].trim(),
                     data);
         }
 
         return getNonExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
                 csvParts[CSV_NUMBER_IDX].trim(),
-                csvParts[CSV_COMPANY_ID_IDX].trim(),
                 csvParts[CSV_SECURE_CODE_IDX].trim(),
+                csvParts[CSV_COMPANY_ID_IDX].trim(),
                 csvParts[CSV_POSTCODE].trim(),
                 data);
     }
