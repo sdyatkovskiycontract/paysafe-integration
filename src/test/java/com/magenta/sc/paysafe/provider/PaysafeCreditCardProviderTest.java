@@ -7,8 +7,8 @@ import com.magenta.sc.exception.CreditCardException;
 import com.magenta.sc.paysafe.mock.data.MockCardData;
 import com.magenta.sc.paysafe.mock.data.MockEntityManagerData;
 import com.magenta.sc.paysafe.mock.mockito.CreditCardFactory;
+import com.magenta.sc.paysafe.mock.mockito.EntityManagerFactory;
 import javafx.util.Pair;
-import org.mockito.stubbing.Answer;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -16,10 +16,6 @@ import org.testng.annotations.Test;
 
 import javax.persistence.EntityManager;
 import java.util.Collection;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for PaysafeCreditCardProvider implementation.
@@ -32,6 +28,9 @@ public class PaysafeCreditCardProviderTest {
     private CreditCard invalidCard;
 
     private CreditCardProvider provider;
+
+    private final static Long COMPANY_ID = 1212l;
+    private final static String PROFILE_ID = "Profile-1212";
 
     private CreditCardProvider createProvider()
             throws PaysafeCreditCardProviderException {
@@ -80,42 +79,29 @@ public class PaysafeCreditCardProviderTest {
 
         // TODO: Check case when cvv and zip code check is required.
 
-        CreditCard testingCard = this.cardWithFunds;
-
-        Long companyId = 123l;
-
         final MockCardData mockCardData = new MockCardData();
         final MockEntityManagerData mockEmInfo = new MockEntityManagerData();
 
-        doAnswer((Answer<Void>) invocation -> {
-            Object[] args = invocation.getArguments();
-            Long id = (Long)args[0];
-            mockCardData.setCompanyId(id);
-            return null;
-        }).when(testingCard).setCompanyId(anyLong());
+        CreditCard testingCard = CreditCardFactory.fromCSV(
+            "Bob Money;   4444333322221111; 123; 0; Not Expired",
+            mockCardData
+        );
 
-        EntityManager em = mock(EntityManager.class);
-        when(em.merge(any(CreditCard.class))).thenAnswer(
-                (Answer) invocation -> {
-                    Object[] args = invocation.getArguments();
-                    CreditCard card = (CreditCard)args[0];
-                    mockEmInfo.setCardMerged(card);
-                    return (CreditCard)args[0];
-                });
+        EntityManager em = EntityManagerFactory.create(mockEmInfo);
 
         try {
             Pair<CreditCard, Collection<CreditCardTransaction>> res =
                 this.provider.registerCreditCard(
                         testingCard,
-                        companyId,
+                        COMPANY_ID,
                         em,
                         false,
                         false);
 
             Assert.assertEquals(mockEmInfo.getCardMerged(), testingCard);
-            Assert.assertEquals(companyId, mockCardData.getCompanyId());
+            Assert.assertEquals(COMPANY_ID, mockCardData.getCompanyId());
+            Assert.assertEquals(PROFILE_ID, mockCardData.getProfileId());
 
-            // TODO: Check that profileId has been added
         }
         catch (CreditCardException e) {
             Assert.fail();
