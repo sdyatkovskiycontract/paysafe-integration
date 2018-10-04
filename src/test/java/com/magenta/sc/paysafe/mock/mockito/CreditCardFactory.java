@@ -1,13 +1,12 @@
 package com.magenta.sc.paysafe.mock.mockito;
 
-import static org.mockito.Mockito.*;
 import com.magenta.sc.core.entity.customer.CreditCard;
 import org.jetbrains.annotations.NotNull;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
-import java.util.Calendar;
-import java.util.Date;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class CreditCardFactory {
 
