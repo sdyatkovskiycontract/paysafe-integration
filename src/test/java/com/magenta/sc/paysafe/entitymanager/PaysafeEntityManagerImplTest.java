@@ -66,7 +66,7 @@ public class PaysafeEntityManagerImplTest {
         setupCard(this.card, mockCardData);
         setupEm(this.entityManager, mockEmInfo);
 
-        PaysafeEntityManager em = PaysafeEntityManagerFactory
+        PaysafeEntityManager em = PaysafeEntityManagerHibernateFactory
                 .getInstance().getPaysafeEntityManager(this.entityManager);
 
         em.addRegistrationInfo(this.card, COMPANY_ID, PROFILE_ID);
@@ -83,7 +83,7 @@ public class PaysafeEntityManagerImplTest {
         setupCard(this.card, mockCardData);
         setupEm(this.entityManager, mockEmInfo);
 
-        PaysafeEntityManager em = PaysafeEntityManagerFactory
+        PaysafeEntityManager em = PaysafeEntityManagerHibernateFactory
                 .getInstance().getPaysafeEntityManager(this.entityManager);
 
         em.removeCardRegistrationInfo(this.card);
