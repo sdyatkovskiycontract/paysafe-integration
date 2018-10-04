@@ -7,8 +7,11 @@ import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 import org.mockito.stubbing.Answer;
 
-import java.util.Calendar;
-import java.util.Date;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class CreditCardFactory {
 
@@ -119,7 +122,7 @@ public class CreditCardFactory {
                     csvParts[CSV_COMPANY_ID_IDX].trim(),
                     csvParts[CSV_SECURE_CODE_IDX].trim(),
                     csvParts[CSV_POSTCODE].trim(),
-                null);
+                    null);
         }
 
         return getNonExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
@@ -127,6 +130,32 @@ public class CreditCardFactory {
                                  csvParts[CSV_COMPANY_ID_IDX].trim(),
                                  csvParts[CSV_SECURE_CODE_IDX].trim(),
                                  csvParts[CSV_POSTCODE].trim(),
-                            null);
+                                 null);
     }
+
+    @NotNull
+    public static CreditCard fromCSV(String csv, MockCardData data) throws IllegalArgumentException {
+
+        String[] csvParts = csv.split(CSV_SEPARATOR);
+
+        if (csvParts.length != 6)
+            throw new IllegalArgumentException("CSV string has wrong format");
+
+        if (csvParts[CSV_EXPIRED_FLAG_IDX].trim().equals(CSV_EXPIRED_VALUE)) {
+            return getExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
+                    csvParts[CSV_NUMBER_IDX].trim(),
+                    csvParts[CSV_COMPANY_ID_IDX].trim(),
+                    csvParts[CSV_SECURE_CODE_IDX].trim(),
+                    csvParts[CSV_POSTCODE].trim(),
+                    data);
+        }
+
+        return getNonExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
+                csvParts[CSV_NUMBER_IDX].trim(),
+                csvParts[CSV_COMPANY_ID_IDX].trim(),
+                csvParts[CSV_SECURE_CODE_IDX].trim(),
+                csvParts[CSV_POSTCODE].trim(),
+                data);
+    }
+
 }

@@ -69,13 +69,25 @@ public class PaysafeCreditCardProviderTest {
         }
     }
 
+    private void testCardValid(CreditCardProvider provider,
+                               CreditCard card,
+                               int creditCardExceptionType,
+                               String message) {
+        try {
+            boolean validValue = this.provider.isValidCard(card, card.getCompanyId(), null);
+            Assert.fail(message);
+        } catch (CreditCardException e) {
+            Assert.assertEquals(e.getType(), creditCardExceptionType);
+        }
+    }
+
     @Test
     public void testIsValidCard() {
         testCardValid(this.provider, this.cardWithFunds, true, "Card with funds test");
         testCardValid(this.provider, this.cardWithoutFunds, true, "Card without funds test");
         testCardValid(this.provider, this.expiredCard, false, "Expired card test");
         testCardValid(this.provider, this.invalidCard, false, "Invalid card test");
-        testCardValid(this.provider, this.cardWithFundsWithoutPostcode, true, "Card without postcode test");
+        testCardValid(this.provider, this.cardWithFundsWithoutPostcode, CreditCardException.EMPTY_POSTCODE, "Card without postcode test");
     }
 
     @Test
@@ -87,7 +99,7 @@ public class PaysafeCreditCardProviderTest {
         final MockEntityManagerData mockEmInfo = new MockEntityManagerData();
 
         CreditCard testingCard = CreditCardFactory.fromCSV(
-            "Bob Money;   4444333322221111; 123; 0; Not Expired",
+            "Bob Money;   4444333322221111; 123; 0; Not Expired; 000000",
             mockCardData
         );
 

@@ -16,7 +16,6 @@ public class PaysafeExceptionParser {
              * @see https://developer.paysafe.com/en/cards/api/#/introduction/error-summary/authorization-errors
              */
             case "3002": //You submitted an invalid card number or brand or combination of card number and brand with your request.
-            case "3004": // The zip/postal code must be provided for an AVS check request.
             case "3005": // You submitted an incorrect CVV value with your request.
             case "3006": // You submitted an expired credit card number with your request.
             case "3007": // Your request has failed the AVS check. Note that the amount has still been reserved on the customer's card and will be released in 3–5 business days. Please ensure the billing address is accurate before retrying the transaction.

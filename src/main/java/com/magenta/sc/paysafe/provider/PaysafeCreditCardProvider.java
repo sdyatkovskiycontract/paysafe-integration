@@ -83,10 +83,13 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
         } catch (PaysafeException ev) {
             if (!PaysafeExceptionParser.isValidationError(ev)) {
+                if (ev.getCode().equals("3004")) // The zip/postal code must be provided for an AVS check request.
+                    throw new CreditCardException(CreditCardException.EMPTY_POSTCODE);
                 throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
             }
+            isSuccess = false;
         } catch (IOException e) {
-            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+            throw new CreditCardException(CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE);
         }
 
         return isSuccess;
