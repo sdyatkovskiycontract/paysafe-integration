@@ -117,8 +117,6 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
                 .locale(Locale.EN_US) // TODO: get rid of this field
                 .firstName(holder.getFirstName())
                 .lastName(holder.getLastName())
-                .email("john.smith@somedomain.com")  // TODO: get rid of this field
-                .phone("713-444-5555") // TODO: get rid of this field
                 .build();
 
             Profile  profileRes = client.customerVaultService().create(profile);
