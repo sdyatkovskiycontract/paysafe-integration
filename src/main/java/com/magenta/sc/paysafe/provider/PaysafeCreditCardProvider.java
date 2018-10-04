@@ -272,11 +272,69 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
     @Override
     public CreditCardTransaction lockAdditionalAmount(Double additionalAmount, CreditCard card, String transactionRef, Long jobId, EntityManager em) throws CreditCardException {
+
         return null;
     }
 
+    // TODO: I need to know which fields are required in CreditCardTransaction class.
+    // I also would like to sort out the relation between fields of
+    // Authorization instance and CreditCardTransaction
     @Override
     public CreditCardTransaction lockPayment(String csc, Double amount, CreditCard card, String transactionRef, Long jobId, EntityManager em) throws CreditCardException {
+
+        logger.info(msg(card, "Lock payment requested."));
+
+        // Few words about why "amount" should be integer.
+        // From Paysafe developer site:
+        // https://developer.paysafe.com/en/sdks/server-side/java/getting-started/
+        //
+        // Transactions are actually measured in fractions
+        // of the currency specified in the currencyCode;
+        // for example, USD transactions are measured in cents.
+        // This multiplier is how many of these smaller units
+        // make up one of the specified currency. For
+        // example, with the currencyCode USD the value
+        // is 100 but for Japanese YEN the multiplier would
+        // be 1 as there is no smaller unit.
+
+        Integer amountInt = (int) (amount * clientConfig.getCurrencyMultiplier());
+
+        try {
+
+            // Build our order object.
+            Authorization auth = Authorization.builder()
+                    .merchantRefNum(transactionRef)
+                    .amount(amountInt)
+                    .settleWithAuth(false) // False, means, that we don't want to settle transaction.
+                    .card()
+                        .cardNum(card.getNumber())
+                        .cvv(card.getSecureCode())
+                        .cardExpiry()
+                            .month(card.getExpireDate().getMonthOfYear())
+                            .year(card.getExpireDate().getYearOfEra())
+                        .done()
+                    .done()
+                    .billingDetails()
+                    .state("Moscow")// TODO: get rid of those fields
+                    .country("RU")
+                    .zip("000000")
+                    .done()
+                .build();
+
+            Authorization authResponse = client.cardPaymentService().authorize(auth);
+
+            if (authResponse.getStatus() != Status.COMPLETED) {
+                logger.error(msg(card, "Failed to create lock authorization"));
+            }
+
+        } catch (PaysafeException ev) {
+            logger.error(msg(card, "Failed to lock payment, due to server error"));
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        } catch (IOException e) {
+            logger.error(msg(card, "Failed to lock payment, due to server IO error"));
+            throw new CreditCardException(CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE);
+        }
+
         return null;
     }
 
@@ -325,11 +383,13 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
         return isSuccess;
     }
 
+    // TODO: discuss methods workflow.
     @Override
     public CreditCardTransaction authoriseAndSubmitByToken(String csc, String transactionRef, Double amount, CreditCard card, Long jobId, Long invoiceId, EntityManager em) throws CreditCardException {
         return null;
     }
 
+    // TODO: discuss methods workflow.
     @Override
     public CreditCardTransaction authoriseAndRefundByToken(String csc, String transactionRef, Double amount, CreditCard card, Long jobId, Long invoiceId, EntityManager em) throws CreditCardException {
         return null;

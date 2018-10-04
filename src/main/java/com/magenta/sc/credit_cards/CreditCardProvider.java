@@ -91,7 +91,7 @@ public interface CreditCardProvider {
                                       CreditCard card,
                                       String transactionRef,
                                       Long jobId,
-                                            EntityManager em) throws CreditCardException;
+                                      EntityManager em) throws CreditCardException;
 
     boolean deleteToken(CreditCard card,
                         EntityManager em) throws CreditCardException;

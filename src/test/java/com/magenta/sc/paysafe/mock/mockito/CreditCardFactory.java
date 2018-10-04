@@ -115,27 +115,7 @@ public class CreditCardFactory {
 
     @NotNull
     public static CreditCard fromCSV(String csv) throws IllegalArgumentException {
-
-        String[] csvParts = csv.split(CSV_SEPARATOR);
-
-        if (csvParts.length != 6)
-            throw new IllegalArgumentException("CSV string has wrong format");
-
-        if (csvParts[CSV_EXPIRED_FLAG_IDX].trim().equals(CSV_EXPIRED_VALUE)) {
-            return getExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
-                    csvParts[CSV_NUMBER_IDX].trim(),
-                    csvParts[CSV_COMPANY_ID_IDX].trim(),
-                    csvParts[CSV_SECURE_CODE_IDX].trim(),
-                    csvParts[CSV_POSTCODE].trim(),
-                    null);
-        }
-
-        return getNonExpiredCard(csvParts[CSV_HOLDER_IDX].trim(),
-                                 csvParts[CSV_NUMBER_IDX].trim(),
-                                 csvParts[CSV_COMPANY_ID_IDX].trim(),
-                                 csvParts[CSV_SECURE_CODE_IDX].trim(),
-                                 csvParts[CSV_POSTCODE].trim(),
-                                 null);
+        return fromCSV(csv, null);
     }
 
     @NotNull
