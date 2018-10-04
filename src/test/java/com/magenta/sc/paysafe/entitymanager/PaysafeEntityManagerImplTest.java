@@ -37,7 +37,7 @@ public class PaysafeEntityManagerImplTest {
 
         final MockCardData mockCardData = new MockCardData();
         CreditCard card = CreditCardFactory.fromCSV(
-            "Bob Usovich; 4444333322221111; 123; 0; Not Expired",
+            "Bob Usovich; 4444333322221111; 123; 0; Not Expired; 000000",
             mockCardData);
 
         final MockEntityManagerData mockEmInfo = new MockEntityManagerData();
@@ -57,7 +57,7 @@ public class PaysafeEntityManagerImplTest {
 
         final MockCardData mockCardData = new MockCardData();
         CreditCard card = CreditCardFactory.fromCSV(
-                "Bob Usovich; 4444333322221111; 123; 0; Not Expired",
+                "Bob Usovich; 4444333322221111; 123; 0; Not Expired; 000000",
                 mockCardData);
 
         final MockEntityManagerData mockEntityManagerData = new MockEntityManagerData();

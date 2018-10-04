@@ -43,7 +43,7 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
     private boolean isValidCard(CreditCard card, Long companyId, EntityManager em, boolean checkCvv, boolean checkPostcode) throws CreditCardException {
         boolean isSuccess = false;
 
-        logger.info("Card x%s: card verification requested.", card.getLast4Digits());
+        logger.info(msg(card, "card verification requested."));
 
         String merchantRefNum = MerchantRefNumber.generate();
 
@@ -68,28 +68,28 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
             if (checkCvv &&
                 verificationResponse.getCvvVerification() != CvvVerification.MATCH) {
-                logger.error("Card x%s: Cvv verification failed.", card.getLast4Digits());
+                logger.error(msg(card,"Cvv verification failed."));
                 isSuccess = false;
             }
 
             if (checkCvv && checkPostcode &&
                 verificationResponse.getAvsResponse() != AvsResponse.MATCH &&
                 verificationResponse.getAvsResponse() != AvsResponse.MATCH_ZIP_ONLY) {
-                logger.error("Card x%s: Postcode verification failed.", card.getLast4Digits());
+                logger.error(msg(card,"Postcode verification failed."));
                 isSuccess = false;
             }
 
         } catch (PaysafeException ev) {
             if (!PaysafeExceptionParser.isValidationError(ev)) {
                 if (ev.getCode().equals("3004")) {// The zip/postal code must be provided for an AVS check request.
-                    logger.error("Card x%s: Neither card nor default post was provider for paysafe gateway", card.getLast4Digits());
+                    logger.error(msg(card,"Neither card nor default post was provider for paysafe gateway"));
                     throw new CreditCardException(CreditCardException.EMPTY_POSTCODE);
                 }
                 throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
             }
             isSuccess = false;
         } catch (IOException e) {
-            logger.error("Card x%s: Verification failed due to IO error.", card.getLast4Digits());
+            logger.error(msg(card,"Verification failed due to IO error."));
             throw new CreditCardException(CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE);
         }
 
@@ -111,7 +111,7 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
     public boolean isValidCard(CreditCard card, Long companyId, EntityManager em) throws CreditCardException {
         boolean res = isValidCard(card, companyId, em, false, false);
         if (res) {
-            logger.info("Card x%s: card company Id updated.", card.getLast4Digits());
+            logger.info(msg(card, "card company Id updated."));
             card.setCompanyId(companyId);
             em.merge(card);
         }
@@ -126,10 +126,11 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
             boolean checkCvvAndPostcode,
             boolean checkPostcode) throws CreditCardException {
 
+        logger.info(msg(card, "Card registration requested"));
+
         if (checkCvvAndPostcode) {
             if (!isValidCard(card, companyId, em, true, checkPostcode)) {
-                logger.error("Can't register card %s, card validation failed.",
-                             card.getLast4Digits());
+                logger.error(msg(card, "Can't register card, card validation failed."));
                 throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
             }
         }
@@ -151,9 +152,11 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
             Profile  profileRes = client.customerVaultService().create(profile);
 
             if (profileRes.getStatus() != com.paysafe.customervault.Status.ACTIVE) {
-                // TODO: Add message, duplicate it into log.
+                logger.error(msg(card, "Failed to add profile."));
                 throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
             }
+
+            logger.info(msg(card, "Profile created successfully"));
 
             com.paysafe.customervault.Card createCardRequest =
                 com.paysafe.customervault.Card.builder()
@@ -167,23 +170,24 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
             com.paysafe.customervault.Card createCardResponse = client.customerVaultService().create(createCardRequest);
 
-            isSuccess = createCardResponse.getStatus() == com.paysafe.customervault.Status.ACTIVE;
+            if (createCardResponse.getStatus() != com.paysafe.customervault.Status.ACTIVE) {
+                logger.error(msg(card, "Failed to add card information."));
+                throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+            }
+
+            logger.info(msg(card, "Card information added."));
 
             token = CardTokenUtils.buildCardToken(
                         profileRes.getId().toString(),
                         createCardResponse.getPaymentToken());
 
         } catch (PaysafeException ev) {
-            // TODO: Add message, duplicate it into log.
+            logger.error(msg(card, "Failed to register card, due to server error"));
             throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
         } catch (IOException e) {
-            // TODO: Add message, duplicate it into log.
-            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+            logger.error(msg(card, "Failed to register card, due to server IO error"));
+            throw new CreditCardException(CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE);
         }
-
-        if (!isSuccess)
-            // TODO: Add message, duplicate it into log.
-            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
 
         card.setCompanyId(companyId);
         card.setToken(token);
