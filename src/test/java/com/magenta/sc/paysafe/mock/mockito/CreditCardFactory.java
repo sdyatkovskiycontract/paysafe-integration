@@ -8,6 +8,7 @@ import org.joda.time.LocalDateTime;
 import org.mockito.stubbing.Answer;
 
 import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -31,6 +32,13 @@ public class CreditCardFactory {
             data.setCompanyId(id);
             return null;
         }).when(card).setCompanyId(anyLong());
+
+        doAnswer((Answer<Void>) invocation -> {
+            Object[] args = invocation.getArguments();
+            String token = (String) args[0];
+            data.setToken(token);
+            return null;
+        }).when(card).setToken(anyString());
     }
 
     @NotNull

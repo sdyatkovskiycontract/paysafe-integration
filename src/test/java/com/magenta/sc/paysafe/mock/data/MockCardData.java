@@ -2,7 +2,7 @@ package com.magenta.sc.paysafe.mock.data;
 
 public class MockCardData {
     private Long companyId;
-    private String profileId;
+    private String token;
 
     public Long getCompanyId() {
         return companyId;
@@ -12,11 +12,11 @@ public class MockCardData {
         this.companyId = companyId;
     }
 
-    public String getProfileId() {
-        return profileId;
+    public String getToken() {
+        return token;
     }
 
-    public void setProfileId(String profileId) {
-        this.profileId = profileId;
+    public void setToken(String token) {
+        this.token = token;
     }
 }

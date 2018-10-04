@@ -30,7 +30,6 @@ public class PaysafeCreditCardProviderTest {
     private CreditCardProvider provider;
 
     private final static Long COMPANY_ID = 1212l;
-    private final static String PROFILE_ID = "Profile-1212";
 
     private CreditCardProvider createProvider()
             throws PaysafeCreditCardProviderException {
@@ -100,7 +99,7 @@ public class PaysafeCreditCardProviderTest {
 
             Assert.assertEquals(mockEmInfo.getCardMerged(), testingCard);
             Assert.assertEquals(COMPANY_ID, mockCardData.getCompanyId());
-            Assert.assertEquals(PROFILE_ID, mockCardData.getProfileId());
+            Assert.assertNotNull(mockCardData.getToken());
 
         }
         catch (CreditCardException e) {

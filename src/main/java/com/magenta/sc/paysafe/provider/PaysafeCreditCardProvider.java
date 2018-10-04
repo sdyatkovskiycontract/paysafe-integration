@@ -29,6 +29,8 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
     private PaysafeApiClient client;
     private PaysafeClientConfig clientConfig;
 
+    private static String PROFILE_TOKEN_SEPARATOR = ";";
+
     public PaysafeCreditCardProvider(PaysafeApiClient client,
                                      PaysafeClientConfig clientConfig) {
         this.client = client;
@@ -96,7 +98,7 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
         // TODO: validate card, if checkCvvAndPostcode or checkPostcode are set.
 
         boolean isSuccess = false;
-        String paymentToken = null;
+        String token = null;
 
         try {
 
@@ -132,6 +134,11 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
             isSuccess = createCardResponse.getStatus() == com.paysafe.customervault.Status.ACTIVE;
 
+            token = String.format("%s%s%s",
+                    profileRes.getId(),
+                    PROFILE_TOKEN_SEPARATOR,
+                    createCardResponse.getPaymentToken());
+
         } catch (PaysafeException ev) {
             // TODO: Add message, duplicate it into log.
             throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
@@ -145,10 +152,9 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
             throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
 
         card.setCompanyId(companyId);
+        card.setToken(token);
 
         em.merge(card);
-
-        // TODO: save payment token in database
 
         return new Pair<>(card, new ArrayList<>());
     }
