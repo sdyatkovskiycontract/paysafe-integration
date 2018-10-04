@@ -1,8 +1,8 @@
-package com.magenta.sc.paysafe.mock;
+package com.magenta.sc.paysafe.mock.data;
 
 import com.magenta.sc.core.entity.customer.CreditCard;
 
-public class MockEntityManagerInfo {
+public class MockEntityManagerData {
     private CreditCard cardMerged;
 
     public CreditCard getCardMerged() {

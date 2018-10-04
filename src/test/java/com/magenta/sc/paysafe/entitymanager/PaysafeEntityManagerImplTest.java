@@ -1,10 +1,10 @@
 package com.magenta.sc.paysafe.entitymanager;
 
 import com.magenta.sc.core.entity.customer.CreditCard;
-import com.magenta.sc.paysafe.mock.EntityManagerFactory;
-import com.magenta.sc.paysafe.mock.MockCardInfo;
-import com.magenta.sc.paysafe.mock.MockEntityManagerInfo;
-import com.magenta.sc.paysafe.mock.core.entity.customer.CreditCardFactory;
+import com.magenta.sc.paysafe.mock.mockito.EntityManagerFactory;
+import com.magenta.sc.paysafe.mock.data.MockCardData;
+import com.magenta.sc.paysafe.mock.data.MockEntityManagerData;
+import com.magenta.sc.paysafe.mock.mockito.CreditCardFactory;
 import org.mockito.stubbing.Answer;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -28,7 +28,7 @@ public class PaysafeEntityManagerImplTest {
     private static final String PROFILE_ID = "profile-123";
 
 
-    private void setupCard(CreditCard card, MockCardInfo cardInfo) {
+    private void setupCard(CreditCard card, MockCardData cardInfo) {
         doAnswer((Answer<Void>) invocation -> {
             Object[] args = invocation.getArguments();
             Long id = (Long)args[0];
@@ -37,7 +37,7 @@ public class PaysafeEntityManagerImplTest {
         }).when(card).setCompanyId(anyLong());
     }
 
-    private void setupEm(EntityManager em, MockEntityManagerInfo mockEmInfo) {
+    private void setupEm(EntityManager em, MockEntityManagerData mockEmInfo) {
         when(em.merge(any(CreditCard.class))).thenAnswer(
                 (Answer) invocation -> {
                     Object[] args = invocation.getArguments();
@@ -60,10 +60,10 @@ public class PaysafeEntityManagerImplTest {
 
     @Test
     public void testAddRegistrationInfo() {
-        final MockCardInfo mockCardInfo = new MockCardInfo();
-        final MockEntityManagerInfo mockEmInfo = new MockEntityManagerInfo();
+        final MockCardData mockCardData = new MockCardData();
+        final MockEntityManagerData mockEmInfo = new MockEntityManagerData();
 
-        setupCard(this.card, mockCardInfo);
+        setupCard(this.card, mockCardData);
         setupEm(this.entityManager, mockEmInfo);
 
         PaysafeEntityManager em = PaysafeEntityManagerFactory
@@ -72,15 +72,15 @@ public class PaysafeEntityManagerImplTest {
         em.addRegistrationInfo(this.card, COMPANY_ID, PROFILE_ID);
 
         Assert.assertEquals(mockEmInfo.getCardMerged(), this.card);
-        Assert.assertEquals(COMPANY_ID, mockCardInfo.getCompanyId());
+        Assert.assertEquals(COMPANY_ID, mockCardData.getCompanyId());
     }
 
     @Test
     public void testRemoveCardRegistrationInfo() {
-        final MockCardInfo mockCardInfo = new MockCardInfo();
-        final MockEntityManagerInfo mockEmInfo = new MockEntityManagerInfo();
+        final MockCardData mockCardData = new MockCardData();
+        final MockEntityManagerData mockEmInfo = new MockEntityManagerData();
 
-        setupCard(this.card, mockCardInfo);
+        setupCard(this.card, mockCardData);
         setupEm(this.entityManager, mockEmInfo);
 
         PaysafeEntityManager em = PaysafeEntityManagerFactory
@@ -89,6 +89,6 @@ public class PaysafeEntityManagerImplTest {
         em.removeCardRegistrationInfo(this.card);
 
         Assert.assertEquals(mockEmInfo.getCardMerged(), this.card);
-        Assert.assertNull(mockCardInfo.getCompanyId());
+        Assert.assertNull(mockCardData.getCompanyId());
     }
 }

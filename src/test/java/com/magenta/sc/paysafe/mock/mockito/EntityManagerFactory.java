@@ -1,4 +1,4 @@
-package com.magenta.sc.paysafe.mock;
+package com.magenta.sc.paysafe.mock.mockito;
 
 import com.magenta.sc.core.entity.customer.CreditCard;
 import org.mockito.stubbing.Answer;

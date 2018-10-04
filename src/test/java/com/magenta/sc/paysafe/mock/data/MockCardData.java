@@ -1,6 +1,6 @@
-package com.magenta.sc.paysafe.mock;
+package com.magenta.sc.paysafe.mock.data;
 
-public class MockCardInfo {
+public class MockCardData {
     private Long companyId;
     private String profileId;
 

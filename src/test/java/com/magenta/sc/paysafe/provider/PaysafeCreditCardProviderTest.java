@@ -4,9 +4,9 @@ import com.magenta.sc.core.entity.booking.CreditCardTransaction;
 import com.magenta.sc.core.entity.customer.CreditCard;
 import com.magenta.sc.credit_cards.CreditCardProvider;
 import com.magenta.sc.exception.CreditCardException;
-import com.magenta.sc.paysafe.mock.MockCardInfo;
-import com.magenta.sc.paysafe.mock.MockEntityManagerInfo;
-import com.magenta.sc.paysafe.mock.core.entity.customer.CreditCardFactory;
+import com.magenta.sc.paysafe.mock.data.MockCardData;
+import com.magenta.sc.paysafe.mock.data.MockEntityManagerData;
+import com.magenta.sc.paysafe.mock.mockito.CreditCardFactory;
 import javafx.util.Pair;
 import org.mockito.stubbing.Answer;
 import org.testng.Assert;
@@ -84,13 +84,13 @@ public class PaysafeCreditCardProviderTest {
 
         Long companyId = 123l;
 
-        final MockCardInfo mockCardInfo = new MockCardInfo();
-        final MockEntityManagerInfo mockEmInfo = new MockEntityManagerInfo();
+        final MockCardData mockCardData = new MockCardData();
+        final MockEntityManagerData mockEmInfo = new MockEntityManagerData();
 
         doAnswer((Answer<Void>) invocation -> {
             Object[] args = invocation.getArguments();
             Long id = (Long)args[0];
-            mockCardInfo.setCompanyId(id);
+            mockCardData.setCompanyId(id);
             return null;
         }).when(testingCard).setCompanyId(anyLong());
 
@@ -113,7 +113,7 @@ public class PaysafeCreditCardProviderTest {
                         false);
 
             Assert.assertEquals(mockEmInfo.getCardMerged(), testingCard);
-            Assert.assertEquals(companyId, mockCardInfo.getCompanyId());
+            Assert.assertEquals(companyId, mockCardData.getCompanyId());
 
             // TODO: Check that profileId has been added
         }
