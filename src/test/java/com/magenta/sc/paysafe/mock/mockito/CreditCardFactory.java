@@ -34,12 +34,16 @@ public class CreditCardFactory {
             return null;
         }).when(card).setCompanyId(anyLong());
 
+        when(card.getCompanyId()).thenAnswer(l -> data.getCompanyId());
+
         doAnswer((Answer<Void>) invocation -> {
             Object[] args = invocation.getArguments();
             String token = (String) args[0];
             data.setToken(token);
             return null;
         }).when(card).setToken(anyString());
+
+        when(card.getToken()).thenAnswer(l -> data.getToken());
     }
 
     @NotNull

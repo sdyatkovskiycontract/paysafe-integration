@@ -6,6 +6,7 @@ import com.magenta.sc.credit_cards.CreditCardProvider;
 import com.magenta.sc.exception.CreditCardException;
 import com.magenta.sc.paysafe.client.config.PaysafeClientConfig;
 import com.magenta.sc.paysafe.error.PaysafeExceptionParser;
+import com.magenta.sc.paysafe.helpers.CardTokenUtils;
 import com.magenta.sc.paysafe.helpers.HolderNameInfo;
 import com.magenta.sc.paysafe.helpers.MerchantRefNumber;
 import com.magenta.sc.paysafe.provider.verification.CardVerificationParameters;
@@ -32,8 +33,6 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
     private PaysafeApiClient client;
     private PaysafeClientConfig clientConfig;
-
-    private static String PROFILE_TOKEN_SEPARATOR = ";";
 
     public PaysafeCreditCardProvider(PaysafeApiClient client,
                                      PaysafeClientConfig clientConfig) {
@@ -95,6 +94,17 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
         }
 
         return isSuccess;
+    }
+
+    private String msg(CreditCard card, String format, Object... args) {
+
+        String body = String.format(format, args);
+
+        StringBuilder sb = new StringBuilder("Card x");
+        sb.append(card.getLast4Digits()).append(':')
+          .append(body);
+
+        return sb.toString();
     }
 
     @Override
@@ -159,10 +169,9 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
             isSuccess = createCardResponse.getStatus() == com.paysafe.customervault.Status.ACTIVE;
 
-            token = String.format("%s%s%s",
-                    profileRes.getId(),
-                    PROFILE_TOKEN_SEPARATOR,
-                    createCardResponse.getPaymentToken());
+            token = CardTokenUtils.buildCardToken(
+                        profileRes.getId().toString(),
+                        createCardResponse.getPaymentToken());
 
         } catch (PaysafeException ev) {
             // TODO: Add message, duplicate it into log.
@@ -270,15 +279,24 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
     @Override
     public boolean deleteToken(CreditCard card, EntityManager em) throws CreditCardException {
 
+        if (card.getToken() == null) {
+            logger.error(msg(card,"Can't delete token, because token field is null"));
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        }
+
         boolean isSuccess = false;
-        String paymentToken = null;
+        Id<Profile> profileId;
 
         try {
+            profileId =
+                    Id.create(CardTokenUtils.getProfileId(card.getToken()), Profile.class);
+        }
+        catch (IllegalArgumentException e) {
+            logger.error(msg(card,"Can't delete token, because token field is invalid"));
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        }
 
-            // TODO: get profileId by card Id
-            String profileIdStr = null;
-            Id<Profile> profileId =  Id.create(profileIdStr, Profile.class);
-
+        try {
             // We assume, that each profile linked with only one card.
             // So, once we decide to delete token,
             // we just need to delete related profile.
@@ -290,13 +308,15 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
             isSuccess = client.customerVaultService().delete(profile);
 
         } catch (PaysafeException ev) {
-            if (!PaysafeExceptionParser.isValidationError(ev))
-                throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
-        } catch (IOException e) {
+            logger.error(msg(card, "Can't delete token due to server error."));
             throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        } catch (IOException e) {
+            logger.error(msg(card, "Can't delete token due to server IO error."));
+            throw new CreditCardException(CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE);
         }
 
-        // TODO: update database
+        card.setToken(null);
+        em.merge(card);
 
         return isSuccess;
     }

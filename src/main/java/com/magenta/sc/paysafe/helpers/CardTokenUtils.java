@@ -1,6 +1,6 @@
 package com.magenta.sc.paysafe.helpers;
 
-public class CardTokenParser {
+public class CardTokenUtils {
 
     private static final String SEPARATOR = ";";
     private static int PROFILE_ID_IDX = 0;

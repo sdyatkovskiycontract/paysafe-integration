@@ -185,6 +185,33 @@ public class PaysafeCreditCardProviderTest {
 
     @Test
     public void testDeleteToken() {
+        final MockCardData mockCardData = new MockCardData();
+        final MockEntityManagerData mockEmInfo = new MockEntityManagerData();
+
+        CreditCard testingCard = CreditCardFactory.fromCSV("Bob Money;   4444333322221111; 123; 0; Not Expired; 000000", mockCardData);
+
+        EntityManager em = EntityManagerFactory.create(mockEmInfo);
+
+        try {
+            Pair<CreditCard, Collection<CreditCardTransaction>> res =
+                    this.provider.registerCreditCard(
+                            testingCard,
+                            COMPANY_ID,
+                            em,
+                            false,
+                            false);
+
+            Assert.assertEquals(mockEmInfo.getCardMerged(), testingCard);
+            Assert.assertEquals(COMPANY_ID, mockCardData.getCompanyId());
+            Assert.assertNotNull(mockCardData.getToken());
+
+            this.provider.deleteToken(testingCard, em);
+
+            Assert.assertNull(mockCardData.getToken());
+        }
+        catch (CreditCardException e) {
+            Assert.fail();
+        }
     }
 
     @Test
