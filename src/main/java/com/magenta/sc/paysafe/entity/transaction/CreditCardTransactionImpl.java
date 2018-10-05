@@ -1,4 +1,4 @@
-package com.magenta.sc.paysafe.entitymanager.transaction;
+package com.magenta.sc.paysafe.entity.transaction;
 
 import com.magenta.sc.core.entity.booking.CreditCardTransaction;
 import com.magenta.sc.core.entity.booking.CreditCardTransactionStatus;
