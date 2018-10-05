@@ -5,10 +5,14 @@ import com.magenta.sc.core.entity.customer.CreditCard;
 import com.magenta.sc.credit_cards.CreditCardProvider;
 import com.magenta.sc.exception.CreditCardException;
 import com.magenta.sc.paysafe.client.config.PaysafeClientConfig;
+import com.magenta.sc.paysafe.entitymanager.PaysafeEntityManager;
+import com.magenta.sc.paysafe.entitymanager.PaysafeEntityManagerHibernateFactory;
 import com.magenta.sc.paysafe.error.PaysafeExceptionParser;
 import com.magenta.sc.paysafe.helpers.CardTokenUtils;
 import com.magenta.sc.paysafe.helpers.HolderNameInfo;
 import com.magenta.sc.paysafe.helpers.MerchantRefNumber;
+import com.magenta.sc.paysafe.provider.authorization.AuthorizationRequestBuilder;
+import com.magenta.sc.paysafe.provider.authorization.CardAuthorizationParameters;
 import com.magenta.sc.paysafe.provider.verification.CardVerificationParameters;
 import com.magenta.sc.paysafe.provider.verification.CardValidationRequestBuilder;
 import com.paysafe.PaysafeApiClient;
@@ -18,6 +22,7 @@ import com.paysafe.common.Locale;
 import com.paysafe.common.PaysafeException;
 import com.paysafe.customervault.Profile;
 import javafx.util.Pair;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +43,23 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
                                      PaysafeClientConfig clientConfig) {
         this.client = client;
         this.clientConfig = clientConfig;
+    }
+
+    private Integer getAmountInt(Double amount) {
+        // Few words about why "amount" should be integer.
+        // From Paysafe developer site:
+        // https://developer.paysafe.com/en/sdks/server-side/java/getting-started/
+        //
+        // Transactions are actually measured in fractions
+        // of the currency specified in the currencyCode;
+        // for example, USD transactions are measured in cents.
+        // This multiplier is how many of these smaller units
+        // make up one of the specified currency. For
+        // example, with the currencyCode USD the value
+        // is 100 but for Japanese YEN the multiplier would
+        // be 1 as there is no smaller unit.
+
+        return (int) (amount * clientConfig.getCurrencyMultiplier());
     }
 
     private boolean isValidCard(CreditCard card, Long companyId, EntityManager em, boolean checkCvv, boolean checkPostcode) throws CreditCardException {
@@ -228,14 +250,12 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
         // is 100 but for Japanese YEN the multiplier would
         // be 1 as there is no smaller unit.
 
-        Integer amountInt = (int) (amount * clientConfig.getCurrencyMultiplier());
-
         try {
             // Build our order object.
             Authorization auth
                     = Authorization.builder()
                     .merchantRefNum(merchantRefNum)
-                    .amount(amountInt)
+                    .amount(getAmountInt(amount))
                     .settleWithAuth(true)
                     .billingDetails()
                     .street(street)
@@ -284,58 +304,42 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
 
         logger.info(msg(card, "Lock payment requested."));
 
-        // Few words about why "amount" should be integer.
-        // From Paysafe developer site:
-        // https://developer.paysafe.com/en/sdks/server-side/java/getting-started/
-        //
-        // Transactions are actually measured in fractions
-        // of the currency specified in the currencyCode;
-        // for example, USD transactions are measured in cents.
-        // This multiplier is how many of these smaller units
-        // make up one of the specified currency. For
-        // example, with the currencyCode USD the value
-        // is 100 but for Japanese YEN the multiplier would
-        // be 1 as there is no smaller unit.
-
-        Integer amountInt = (int) (amount * clientConfig.getCurrencyMultiplier());
-
         try {
 
-            // Build our order object.
-            Authorization auth = Authorization.builder()
-                    .merchantRefNum(transactionRef)
-                    .amount(amountInt)
-                    .settleWithAuth(false) // False, means, that we don't want to settle transaction.
-                    .card()
-                        .cardNum(card.getNumber())
-                        .cvv(card.getSecureCode())
-                        .cardExpiry()
-                            .month(card.getExpireDate().getMonthOfYear())
-                            .year(card.getExpireDate().getYearOfEra())
-                        .done()
-                    .done()
-                    .billingDetails()
-                    .state("Moscow")// TODO: get rid of those fields
-                    .country("RU")
-                    .zip("000000")
-                    .done()
-                .build();
+            CardAuthorizationParameters p = new CardAuthorizationParameters(
+                    card,
+                    transactionRef,
+                    getAmountInt(amount),
+                    false);
 
-            Authorization authResponse = client.cardPaymentService().authorize(auth);
+            Authorization authRequest = AuthorizationRequestBuilder.build(p);
+            Authorization authResponse = client.cardPaymentService().authorize(authRequest);
 
             if (authResponse.getStatus() != Status.COMPLETED) {
-                logger.error(msg(card, "Failed to create lock authorization"));
+                logger.error(msg(card, "Failed to create authorize payment lock"));
+                throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
             }
+
+            PaysafeEntityManager pem = PaysafeEntityManagerHibernateFactory
+                    .getInstance().getPaysafeEntityManager(em);
+
+            CreditCardTransaction transaction = pem.createCardAuthTransaction(
+                    card,
+                    transactionRef,
+                    authResponse.getId().toString(),
+                    authResponse.getAuthCode(),
+                    DateTime.parse(authResponse.getTxnTime()));
+
+            return transaction;
 
         } catch (PaysafeException ev) {
             logger.error(msg(card, "Failed to lock payment, due to server error"));
+            // TODO: parse exception, and perhaps provider better CreditCardException type value.
             throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
         } catch (IOException e) {
             logger.error(msg(card, "Failed to lock payment, due to server IO error"));
             throw new CreditCardException(CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE);
         }
-
-        return null;
     }
 
     @Override
@@ -386,7 +390,56 @@ public class PaysafeCreditCardProvider implements CreditCardProvider {
     // TODO: discuss methods workflow.
     @Override
     public CreditCardTransaction authoriseAndSubmitByToken(String csc, String transactionRef, Double amount, CreditCard card, Long jobId, Long invoiceId, EntityManager em) throws CreditCardException {
-        return null;
+
+        logger.info(msg(card, "Authorization with submition by token requested."));
+
+
+        Integer amountInt = (int) (amount * clientConfig.getCurrencyMultiplier());
+
+        String authId;
+        DateTime txnTime;
+        String authCode;
+
+        try {
+
+            CardAuthorizationParameters p = new CardAuthorizationParameters(
+                    card,
+                    transactionRef,
+                    amountInt,
+                    false);
+
+            Authorization authRequest = AuthorizationRequestBuilder.build(p);
+            Authorization authResponse = client.cardPaymentService().authorize(authRequest);
+
+            if (authResponse.getStatus() != Status.COMPLETED) {
+                logger.error(msg(card, "Failed to create authorize payment lock"));
+                throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+            }
+
+            authId = authResponse.getId().toString();
+            authCode = authResponse.getAuthCode();
+            txnTime = DateTime.parse(authResponse.getTxnTime());
+
+        } catch (PaysafeException ev) {
+            logger.error(msg(card, "Failed to lock payment, due to server error"));
+            // TODO: parse exception, and perhaps provider better CreditCardException type value.
+            throw new CreditCardException(CreditCardException.INVALID_CARD_INFO);
+        } catch (IOException e) {
+            logger.error(msg(card, "Failed to lock payment, due to server IO error"));
+            throw new CreditCardException(CreditCardException.CREDIT_CARD_PROVIDER_NOT_AVAILABLE);
+        }
+
+        PaysafeEntityManager pem = PaysafeEntityManagerHibernateFactory
+                .getInstance().getPaysafeEntityManager(em);
+
+        CreditCardTransaction transaction = pem.createCardAuthTransaction(
+                card,
+                transactionRef,
+                authId,
+                authCode,
+                txnTime);
+
+        return transaction;
     }
 
     // TODO: discuss methods workflow.
