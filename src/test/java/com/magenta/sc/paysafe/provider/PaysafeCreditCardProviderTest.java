@@ -153,10 +153,25 @@ public class PaysafeCreditCardProviderTest {
 
     @Test
     public void testRegisterCreditCard() {
+
         testRegisterCreditCard("Bob Money;   4444333322221111; 123; 0; Not Expired; 000000");
+
+
+        /**
+         * For CVV response simulation
+         * @see https://developer.paysafe.com/en/rest-apis/cards/test-and-go-live/simulating-avs-responses/
+         * CVV with same digits are special codes and triggers special test env behaviour.
+         * CVV with different digits cosidered as correct secure codes.
+         * CVV = 666 triggers system to return NO_MATCH error.
+         */
         testRegisterCreditCard("Bob Money;   4444333322221111; 123; 0; Not Expired; 000000", true, false);
+        testRegisterCreditCard("Bob Money;   4444333322221111; 666; 0; Not Expired; 000000", CreditCardException.INVALID_CARD_INFO, true, false);
+
+        /**
+         * For AVS response simulation
+         * @see https://developer.paysafe.com/en/rest-apis/cards/test-and-go-live/simulating-cvv-responses/
+         */
         testRegisterCreditCard("Bob Money;   4444333322221111; 123; 0; Not Expired; 000000", true, true);
-        testRegisterCreditCard("Bob Money;   4444333322221111; 7; 0; Not Expired; 000000", CreditCardException.INVALID_CARD_INFO, true, true);
     }
 
     @Test
